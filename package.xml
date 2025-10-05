@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>custom_turtlesim</name>
+  <version>0.0.0</version>
+  <description>Custom Turtlesim with multi-turtle support</description>
+  <maintainer email="nerdstar.felipe@gmail.com">f-k-s</maintainer>
+  <license>Apache-2.0</license>
+
+  <!-- Dependências de build -->
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>rosidl_default_generators</buildtool_depend>
+
+  <!-- Dependências de execução (seu código Python usa esses) -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>rosidl_default_runtime</exec_depend>
+
+  <!-- Para gerar interfaces (.srv) -->
+  <member_of_group>rosidl_interface_packages</member_of_group>
+
+  <!-- Testes (opcional) -->
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <!-- IMPORTANTE: agora é ament_cmake -->
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
