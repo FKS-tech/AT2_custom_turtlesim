@@ -18,6 +18,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/SetBgColor.srv"
   "srv/ChangeSprite.srv"
   "srv/Kill.srv"
+  "srv/GetTurtlePosition.srv"
   DEPENDENCIES std_msgs geometry_msgs
 )
 
@@ -33,6 +34,7 @@ install(
   PROGRAMS
     custom_turtlesim/simulator_node.py
     custom_turtlesim/teleop_node.py
+    custom_turtlesim/atividade_3.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

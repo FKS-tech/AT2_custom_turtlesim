@@ -1,0 +1,11 @@
+string name
+int32 sides
+float32 side_length
+---
+bool success
+float32 turn_angle_deg
+float32 radius
+float32 dmin
+float32 x
+float32 y
+float32 theta

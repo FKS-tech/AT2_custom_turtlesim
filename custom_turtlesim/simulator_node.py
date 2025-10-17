@@ -3,7 +3,7 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
-from custom_turtlesim.srv import Spawn, SetBgColor, ChangeSprite, Kill
+from custom_turtlesim.srv import Spawn, SetBgColor, ChangeSprite, Kill, GetTurtlePosition
 import math
 import pygame
 from ament_index_python.packages import get_package_share_directory
@@ -116,6 +116,8 @@ class SimulatorNode(Node):
         self.next_id = 1
         self.bg_r, self.bg_g, self.bg_b = 255, 255, 255
 
+       
+
         # Gráfico
         self.graphics = TurtleSimGraphics(self.get_logger())
         self.graphics.load_sprite_images()
@@ -125,6 +127,7 @@ class SimulatorNode(Node):
         self.bg_srv = self.create_service(SetBgColor, 'set_background_color', self.bg_callback)
         self.sprite_srv = self.create_service(ChangeSprite, 'change_turtle_sprite', self.sprite_callback)
         self.kill_srv = self.create_service(Kill, 'kill_turtle', self.kill_callback)
+        self.get_turtle_position_srv = self.create_service(GetTurtlePosition, 'get_turtle_position', self.get_turtle_position_callback)
 
         # Timer de atualização
         self.timer = self.create_timer(0.1, self.update_simulation)
@@ -173,7 +176,47 @@ class SimulatorNode(Node):
             self.get_logger().warn(f"Turtle '{request.name}' not found.")
             response.success = False
         return response
+    
+    def get_turtle_position_callback(self, request, response):
+        target_turtle = None
+        for turtle in self.turtles.values():
+            if turtle.name == request.name:
+                target_turtle = turtle
+                break
 
+        if target_turtle is None:
+            response.success = False
+            return response
+
+        x, y = target_turtle.x, target_turtle.y
+        sides = request.sides
+        side_length = request.side_length
+
+        if sides < 3:
+            response.success = False
+            return response
+
+        # Raio da circunferência circunscrita
+        radius = side_length / (2 * math.sin(math.pi / sides))
+
+        # Distância mínima até qualquer borda
+        dmin = min(x, 10.0 - x, y, 10.0 - y)
+
+        # Ângulo de rotação (externo) em graus — útil para o cliente decidir quanto girar
+        turn_angle_deg = 360.0 / sides
+
+        response.success = True
+        response.turn_angle_deg = turn_angle_deg  # na verdade, é o ângulo de giro!
+        response.radius = radius
+        response.dmin = dmin
+        response.x = x
+        response.y = y
+        response.theta = target_turtle.theta
+        return response
+
+        
+
+        
     # --- Callback de movimento ---
     def cmd_vel_callback(self, msg, turtle_id):
         if turtle_id in self.turtles:
@@ -191,8 +234,7 @@ class SimulatorNode(Node):
             turtle.x = max(0.0, min(WORLD_SIZE, turtle.x))
             turtle.y = max(0.0, min(WORLD_SIZE, turtle.y))
             turtle.trail.append((turtle.x, turtle.y))
-            if len(turtle.trail) > turtle.max_trail_length:
-                turtle.trail.pop(0)
+
         # Gerencia janela gráfica
         self.graphics.ensure_window(self.turtles)
         if self.graphics.pygame_initialized:
