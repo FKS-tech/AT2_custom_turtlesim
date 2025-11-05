@@ -24,8 +24,8 @@ Usage
    Terminal 1 (Simulator):
    ros2 run custom_turtlesim simulator_node.py
 
-   Terminal 2 (Teleop):
-   ros2 run custom_turtlesim teleop_node.py
+   Terminal 2 (Teleop) or (Atividade_3):
+   ros2 run custom_turtlesim teleop_node.py OR ros2 run custom_turtlesim atividade_3.py
 
    You can customize the turtle's spawn position and name using parameters:
    ros2 run custom_turtlesim teleop_node.py --ros-args -p turtle_name:=my_turtle -p x:=2.0 -p y:=8.0 -p theta:=1.57
@@ -36,7 +36,7 @@ Usage
    It also starts the teleop node in a new interactive terminal (xterm) for keyboard control.
    The teleop node receives launch arguments as parameters.
 
-   ros2 launch custom_turtlesim custom_turtlesim.launch.py
+   ros2 launch custom_turtlesim custom_turtlesim.launch.py OR ros2 launch custom_turtlesim my_second_launch.launch.py
 
    You can customize the turtle's spawn position and name via launch arguments:
    ros2 launch custom_turtlesim custom_turtlesim.launch.py turtle_name:=launch_teleop x:=2.0 y:=8.0 theta:=1.57
@@ -58,6 +58,16 @@ Keyboard Controls (teleop)
 - Sprite change:
  - T: Change turtle sprite randomly (options: ardent, bouncy, crystal, dashing, eloquent, foxy, galactic, humble, iron, jazzy, rolling)
  - 1-0, - : Change to a specific sprite (1: ardent, 2: bouncy, ..., 0: jazzy, -: rolling)
+
+- Polygons(atividade_3.py OR my_second_launch.launch.py):
+ - P: Draw polygon
+ - +: Increase sides (max: 12 sides)
+ - _: Decrease sides (min: 3 sides)
+ - I: Increase the side length
+ - K: Decrease the side length
+
+- Draw:
+ - C: clear draw
 
 Notes
 -----
