@@ -1,0 +1,8 @@
+string name
+int32 sides
+float32 side_lenght
+float32 x
+float32 y
+float32 theta
+---
+bool success

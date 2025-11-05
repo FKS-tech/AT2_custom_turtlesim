@@ -8,7 +8,7 @@ import atexit
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
-from custom_turtlesim.srv import Spawn, SetBgColor, ChangeSprite, Kill, GetTurtlePosition
+from custom_turtlesim.srv import Spawn, SetBgColor, ChangeSprite, Kill, GetTurtlePosition, DrawPolygon, ClearDrawing
 import random
 import math
 
@@ -47,6 +47,9 @@ KEY_BINDINGS = {
     '_' : {'polygon': 'decrease_sides'},
     'i' : {'polygon': 'increase_size'},
     'k' : {'polygon': 'decrease_size'},
+
+    # Limpar desenho
+    'c' : {'clear_drawing': True}
 }
 
 # --- Classe utilitária para leitura de teclado em terminal ---
@@ -90,6 +93,8 @@ class TeleopNode(Node):
         self.cli_kill = self.create_client(Kill, 'kill_turtle')
         self.cli_sprite = self.create_client(ChangeSprite, 'change_turtle_sprite')
         self.cli_get_position = self.create_client(GetTurtlePosition, 'get_turtle_position')
+        self.cli_draw_polygon = self.create_client(DrawPolygon, 'draw_polygon')
+        self.cli_clear_drawing = self.create_client(ClearDrawing, 'clear_drawing')
 
         # Aguarda serviços necessários
         for cli, name in [
@@ -97,7 +102,9 @@ class TeleopNode(Node):
             (self.cli_get_position, 'get_turtle_position'),
             (self.cli_bg, 'set_background_color'),
             (self.cli_sprite, 'change_turtle_sprite'),
-            (self.cli_kill, 'kill_turtle')
+            (self.cli_kill, 'kill_turtle'),
+            (self.cli_draw_polygon, 'draw_polygon'),
+            (self.cli_clear_drawing, 'clear_drawing')
         ]:
             while not cli.wait_for_service(timeout_sec=1.0):
                 self.get_logger().info(f'Serviço "{name}" não disponível, esperando...')
@@ -203,69 +210,41 @@ CTRL+C - sair
             return None
         
     def draw_polygon(self):
-        if self.action_in_progress:
-            self.get_logger().info("Action in progress, cannot draw polygon now.")
-            return
-        response = self.send_polygon_request()
-        if response is None or not response.success:
-            self.get_logger().error("Failed to get valid polygon parameters.")
-            self.polygon_in_progress = False
-            return
+        self.polygon_in_progress = True
+        turtle_position_response = self.send_polygon_request()
 
-        turn_angle = response.turn_angle_deg
-        self.get_logger().info(f"Drawing polygon with {self.polygon_sides} sides of length {self.side_length}")
 
-        if response.dmin < response.radius:
-            self.get_logger().warning("Not enough space to draw the polygon without hitting walls. Repositioning...")
+        self.get_logger().info(f"Drawing polygon: sides={self.polygon_sides}, side_length={self.side_length}")
+        req = DrawPolygon.Request()
+        req.x = turtle_position_response.x
+        req.y = turtle_position_response.y
+        req.theta = turtle_position_response.theta
+        req.name = self.turtle_name
+        req.sides = self.polygon_sides
+        req.side_lenght = self.side_length
+        future = self.cli_draw_polygon.call_async(req)
+        rclpy.spin_until_future_complete(self, future)
 
-            if hasattr(response, 'x') and hasattr(response, 'y') and hasattr(response, 'theta'):
-                new_x = response.x
-                new_y = response.y
-                new_theta = response.theta
-            else:
-                new_x = 5.0
-                new_y = 5.0
-                new_theta = 0.0
-
-            world = 10.0
-            r = response.radius
-
-            tx = max(r, min(new_x, world - r))
-            ty = max(r, min(new_y, world - r))
-            dist = math.hypot(tx - new_x, ty - new_y)
-            if dist > 0.01:
-                bearing = math.degrees(math.atan2(ty - new_y, tx - new_x))
-
-                cur_deg = math.degrees(new_theta)
-                rel = ((bearing - cur_deg + 180) % 360) - 180
-
-                rot_duration = max(0.1, abs(rel) / 120.0)
-                self.start_rotate(rel, rot_duration)
-                while self.active_timer is not None and rclpy.ok():
-                    rclpy.spin_once(self, timeout_sec=0.1)
-
-                speed = 2.0
-                self.start_move(speed, dist / speed)
-                while self.active_timer is not None and rclpy.ok():
-                    rclpy.spin_once(self, timeout_sec=0.1)
-
-                response = self.send_polygon_request()
-                if response is None or not response.success:
-                    self.get_logger().error("Failed to get valid polygon parameters after repositioning.")
-                    return
-
-        def wait_for_active_timer(node):
-            while node.active_timer is not None and rclpy.ok():
-                rclpy.spin_once(node, timeout_sec=0.1)
-
-        for side in range(self.polygon_sides):
-            self.start_move(2.0, self.side_length / 2.0)
-            wait_for_active_timer(self)
-            self.start_rotate(turn_angle, 2.0)
-            wait_for_active_timer(self)
+        if future.result().success:
+            self.get_logger().info("Polygon drawing completed.")
+        else:
+            self.get_logger().error("Failed to draw polygon!")
 
         self.polygon_in_progress = False
 
+    def clear_drawing(self):
+        req = ClearDrawing.Request()
+        req.name = self.turtle_name
+        req.clear_draw = True
+        future = self.cli_clear_drawing.call_async(req)
+        rclpy.spin_until_future_complete(self, future)
+
+        if future.result().success:
+            self.get_logger().info("Cleared drawing successfully.")
+        else:
+            self.get_logger().error("Failed to clear drawing!")
+        
+    
 
     def set_background(self, r, g, b):
         req = SetBgColor.Request()
@@ -349,6 +328,8 @@ CTRL+C - sair
                             self.change_sprite_to(new_sprite)
                         elif 'action' in action and action['action'] == 'change_sprite':
                             self.change_sprite()
+                        elif 'clear_drawing' in action and action['clear_drawing']:
+                            self.clear_drawing()
 
         except Exception as e:
             self.get_logger().error(f'Error: {e}')

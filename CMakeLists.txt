@@ -19,6 +19,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/ChangeSprite.srv"
   "srv/Kill.srv"
   "srv/GetTurtlePosition.srv"
+  "srv/DrawPolygon.srv"
+  "srv/ClearDrawing.srv"
   DEPENDENCIES std_msgs geometry_msgs
 )
 

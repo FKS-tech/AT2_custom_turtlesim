@@ -3,11 +3,12 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
-from custom_turtlesim.srv import Spawn, SetBgColor, ChangeSprite, Kill, GetTurtlePosition
+from custom_turtlesim.srv import Spawn, SetBgColor, ChangeSprite, Kill, GetTurtlePosition, DrawPolygon, ClearDrawing
 import math
 import pygame
 from ament_index_python.packages import get_package_share_directory
 import os
+
 
 # --- Constantes de configuração ---
 WINDOW_WIDTH = 500
@@ -128,6 +129,8 @@ class SimulatorNode(Node):
         self.sprite_srv = self.create_service(ChangeSprite, 'change_turtle_sprite', self.sprite_callback)
         self.kill_srv = self.create_service(Kill, 'kill_turtle', self.kill_callback)
         self.get_turtle_position_srv = self.create_service(GetTurtlePosition, 'get_turtle_position', self.get_turtle_position_callback)
+        self.draw_polygon_srv = self.create_service(DrawPolygon, 'draw_polygon', self.draw_polygon_callback)
+        self.clear_drawing_srv = self.create_service(ClearDrawing, 'clear_drawing', self.clear_drawing_callback)
 
         # Timer de atualização
         self.timer = self.create_timer(0.1, self.update_simulation)
@@ -161,6 +164,69 @@ class SimulatorNode(Node):
             self.get_logger().info(f"Turtle {request.turtle_id} sprite changed to '{request.sprite_name}'")
             response.success = True
         return response
+
+    def draw_polygon_callback(self, request, response):
+        existing_turtle_id = None
+        for tid, turtle in self.turtles.items():
+            if turtle.name == request.name:
+                existing_turtle_id = tid
+                break
+        
+        turtle_id = existing_turtle_id
+
+        self.turtles[turtle_id] = Turtle(turtle_id, request.name, request.x, request.y, request.theta)
+
+        
+        sides = request.sides
+        side_lenght = request.side_lenght
+
+        desired_turn_angle = (2 * math.pi) / sides
+
+        move_step = 0.01
+        for _ in range(sides):
+            distance_moved = 0.0
+            while distance_moved < side_lenght:
+                self.turtles[turtle_id].x += move_step * math.cos(self.turtles[turtle_id].theta)
+                self.turtles[turtle_id].y += move_step * math.sin(self.turtles[turtle_id].theta)
+                distance_moved += move_step
+                self.turtles[turtle_id].trail.append((self.turtles[turtle_id].x, self.turtles[turtle_id].y))
+
+                if self.graphics.pygame_initialized:
+                    self.graphics.handle_events()
+                    self.graphics.draw(self.turtles)
+
+            self.turtles[turtle_id].theta -= desired_turn_angle  # Simula o tempo de rotação
+            if self.graphics.pygame_initialized:
+                self.graphics.handle_events()
+                self.graphics.draw(self.turtles)
+
+        response.success = True
+        return response
+    
+    def clear_drawing_callback(self, request, response):
+        for tid, turtle in self.turtles.items():
+            if turtle.name == request.name:
+                turtle_name = turtle.name
+                break
+
+        clear = request.clear_draw
+
+        if clear:
+            for turtle in self.turtles.values():
+                if turtle.name == turtle_name:
+                    turtle.trail = []
+                    self.get_logger().info(f"Cleared drawing for turtle '{turtle_name}'.")
+                    if self.graphics.pygame_initialized:
+                        self.graphics.handle_events()
+                        self.graphics.draw(self.turtles)
+                    break
+
+        clear = False
+                
+        response.success = True
+        return response
+
+
 
     def kill_callback(self, request, response):
         turtle_to_remove = None
